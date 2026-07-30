@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Ziox — Ta ville virtuelle</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root{
+    --bg-deep:#0B0E1A;
+    --bg-panel:#131A2E;
+    --bg-panel-hi:#1B2440;
+    --cyan:#35E8E0;
+    --amber:#FFB84D;
+    --violet:#8C6BFF;
+    --text-main:#E9EDF5;
+    --text-dim:#8792AC;
+    --line: rgba(255,255,255,0.07);
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #182246 0%, var(--bg-deep) 55%);
+    color:var(--text-main);
+    font-family:'Inter', sans-serif;
+    overflow-x:hidden;
+    user-select:none;
+  }
+
+  #app{
+    display:flex; flex-direction:column;
+    min-height:100vh;
+    max-width:520px; margin:0 auto;
+    padding:14px 14px 22px;
+  }
+
+  /* ---------- HUD ---------- */
+  .hud{
+    background:linear-gradient(180deg, var(--bg-panel-hi), var(--bg-panel));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:14px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .hud-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:20px; letter-spacing:0.3px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .hud-title .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan); box-shadow:0 0 10px var(--cyan);}
+  .hud-sub{font-size:11px; color:var(--text-dim); margin-top:2px;}
+  .stats{display:flex; gap:14px;}
+  .stat{text-align:right;}
+  .stat-val{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:15px;}
+  .stat-label{font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.6px;}
+  .stat.coins .stat-val{color:var(--amber);}
+  .stat.energy .stat-val{color:var(--cyan);}
+
+  /* ---------- SKYLINE ---------- */
+  .skyline-wrap{
+    position:relative;
+    margin-top:16px;
+    border-radius:20px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, #0E1428 0%, #0A0D18 70%);
+    height:290px;
+  }
+  .sky-glow{
+    position:absolute; inset:0;
+    background: radial-gradient(400px 160px at 50% 0%, rgba(140,107,255,0.25), transparent 70%);
+    pointer-events:none;
+  }
+  #skylineSvg{
+    position:absolute; bottom:0; left:0; width:100%; height:100%;
+  }
+  .floaters{position:absolute; inset:0; pointer-events:none;}
+  .float-coin{
+    position:absolute;
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px;
+    color:var(--amber);
+    animation: floatUp 900ms ease-out forwards;
+  }
+  @keyframes floatUp{
+    0%{ transform:translateY(0); opacity:1; }
+    100%{ transform:translateY(-38px); opacity:0; }
+  }
+
+  .hint{
+    text-align:center; font-size:11px; color:var(--text-dim);
+    margin-top:10px;
+  }
+
+  /* ---------- ACTIONS ---------- */
+  .actions{
+    margin-top:16px;
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  }
+  .btn{
+    border:none; border-radius:14px;
+    padding:14px 12px;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:14px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    cursor:pointer;
+    transition:transform 120ms ease, filter 120ms ease;
+  }
+  .btn:active{ transform:scale(0.96); }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--cyan), #1FB9C9);
+    color:#04211F;
+  }
+  .btn-secondary{
+    background:var(--bg-panel-hi);
+    color:var(--text-main);
+    border:1px solid var(--line);
+  }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  /* ---------- BUILDINGS LIST ---------- */
+  .section-title{
+    margin-top:22px; margin-bottom:8px;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13px;
+    color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;
+  }
+  .buildings{
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .building-card{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 14px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .b-left{display:flex; align-items:center; gap:10px;}
+  .b-icon{
+    width:36px; height:36px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(140,107,255,0.15);
+    font-size:18px;
+  }
+  .b-name{font-weight:600; font-size:13px;}
+  .b-desc{font-size:11px; color:var(--text-dim);}
+  .b-buy{
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:12px;
+    background:rgba(255,184,77,0.12); color:var(--amber);
+    border:1px solid rgba(255,184,77,0.3);
+    border-radius:10px; padding:8px 12px;
+  }
+  .b-buy:disabled{ opacity:0.35; }
+
+  footer{
+    margin-top:20px; text-align:center;
+    font-size:10px; color:var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div class="hud">
+    <div>
+      <div class="hud-title"><span class="dot"></span>ZIOX</div>
+      <div class="hud-sub" id="cityLevel">Ville naissante · Niveau 1</div>
+    </div>
+    <div class="stats">
+      <div class="stat coins">
+        <div class="stat-val" id="coinCount">0</div>
+        <div class="stat-label">ZCoins</div>
+      </div>
+      <div class="stat energy">
+        <div class="stat-val" id="energyCount">100%</div>
+        <div class="stat-label">Énergie</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="skyline-wrap" id="skylineWrap">
+    <div class="sky-glow"></div>
+    <svg id="skylineSvg" viewBox="0 0 500 290" preserveAspectRatio="xMidYMax meet"></svg>
+    <div class="floaters" id="floaters"></div>
+  </div>
+  <div class="hint">Touche un immeuble pour collecter ses ZCoins ⚡</div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="btnCollectAll">💰 Tout collecter</button>
+    <button class="btn btn-secondary" id="btnBuild">🏗️ Construire</button>
+  </div>
+
+  <div class="section-title">Bâtiments disponibles</div>
+  <div class="buildings" id="buildingList"></div>
+
+  <footer>Ziox · ta ville, ton rythme 🌃</footer>
+</div>
+
+<script>
+(function(){
+  const tg = window.Telegram ? window.Telegram.WebApp : null;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  // ---------------- ÉTAT DU JEU ----------------
+  const state = {
+    coins: 40,
+    energy: 100,
+    level: 1,
+    buildings: [
+      { id:'maison',   nom:'Maison',        emoji:'🏠', revenu:1, cout:20,  couleur:'#35E8E0', nb:2, hauteur:60 },
+      { id:'boutique',  nom:'Boutique',      emoji:'🏪', revenu:3, cout:60,  couleur:'#FFB84D', nb:1, hauteur:90 },
+      { id:'tour',      nom:'Tour d\'affaires', emoji:'🏢', revenu:8, cout:150, couleur:'#8C6BFF', nb:0, hauteur:150 },
+      { id:'centrale',  nom:'Centrale d\'énergie', emoji:'⚡', revenu:15, cout:320, couleur:'#FF6B6B', nb:0, hauteur:110 },
+    ],
+  };
+
+  const coinCountEl = document.getElementById('coinCount');
+  const energyCountEl = document.getElementById('energyCount');
+  const cityLevelEl = document.getElementById('cityLevel');
+  const svg = document.getElementById('skylineSvg');
+  const floaters = document.getElementById('floaters');
+  const buildingListEl = document.getElementById('buildingList');
+
+  function formatNombre(n){
+    return n.toLocaleString('fr-FR');
+  }
+
+  function totalBatiments(){
+    return state.buildings.reduce((s,b)=>s+b.nb,0);
+  }
+
+  function revenuTotal(){
+    return state.buildings.reduce((s,b)=>s+b.revenu*b.nb,0);
+  }
+
+  function maj(){
+    coinCountEl.textContent = formatNombre(Math.floor(state.coins));
+    energyCountEl.textContent = Math.floor(state.energy)+'%';
+    const niveau = 1 + Math.floor(totalBatiments()/3);
+    state.level = niveau;
+    cityLevelEl.textContent = (niveau === 1 ? 'Ville naissante' : niveau < 4 ? 'Ville en essor' : 'Métropole animée') + ' · Niveau ' + niveau;
+    dessinerSkyline();
+    dessinerListe();
+  }
+
+  // ---------------- SKYLINE SVG ----------------
+  function dessinerSkyline(){
+    svg.innerHTML = '';
+    const largeur = 500, base = 280;
+    let x = 20;
+    const instances = [];
+    state.buildings.forEach(b=>{
+      for(let i=0;i<b.nb;i++) instances.push(b);
+    });
+    if(instances.length === 0){
+      const texte = document.createElementNS('http://www.w3.org/2000/svg','text');
+      texte.setAttribute('x','250'); texte.setAttribute('y','200');
+      texte.setAttribute('text-anchor','middle'); texte.setAttribute('fill','#8792AC');
+      texte.setAttribute('font-size','13'); texte.textContent = 'Construis ton premier bâtiment ✨';
+      svg.appendChild(texte);
+      return;
+    }
+    const largeurBat = Math.min(64, (largeur-40)/instances.length - 8);
+    instances.forEach((b, idx)=>{
+      const h = b.hauteur;
+      const y = base - h;
+      const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+      g.setAttribute('class','batiment');
+      g.setAttribute('data-id', b.id);
+      g.style.cursor = 'pointer';
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', y);
+      rect.setAttribute('width', largeurBat);
+      rect.setAttribute('height', h);
+      rect.setAttribute('rx', 6);
+      rect.setAttribute('fill', '#161E38');
+      rect.setAttribute('stroke', b.couleur);
+      rect.setAttribute('stroke-opacity', '0.5');
+      g.appendChild(rect);
+
+      // fenêtres qui s'allument selon l'énergie
+      const rangs = Math.floor(h/16);
+      const cols = Math.max(2, Math.floor(largeurBat/14));
+      for(let r=0;r<rangs;r++){
+        for(let c=0;c<cols;c++){
+          const allume = Math.random()*100 < state.energy;
+          const fen = document.createElementNS('http://www.w3.org/2000/svg','rect');
+          fen.setAttribute('x', x + 6 + c*13);
+          fen.setAttribute('y', y + 8 + r*15);
+          fen.setAttribute('width', 6);
+          fen.setAttribute('height', 8);
+          fen.setAttribute('rx', 1);
+          fen.setAttribute('fill', allume ? b.couleur : '#2A3455');
+          fen.setAttribute('opacity', allume ? '0.9' : '0.5');
+          g.appendChild(fen);
+        }
+      }
+
+      const emoji = document.createElementNS('http://www.w3.org/2000/svg','text');
+      emoji.setAttribute('x', x + largeurBat/2);
+      emoji.setAttribute('y', y - 8);
+      emoji.setAttribute('text-anchor','middle');
+      emoji.setAttribute('font-size','16');
+      emoji.textContent = b.emoji;
+      g.appendChild(emoji);
+
+      g.addEventListener('click', (ev)=> collecter(b, ev));
+      svg.appendChild(g);
+
+      x += largeurBat + 10;
+    });
+
+    // sol
+    const sol = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    sol.setAttribute('x','0'); sol.setAttribute('y', base);
+    sol.setAttribute('width', largeur); sol.setAttribute('height', 10);
+    sol.setAttribute('fill', '#0A0D18');
+    svg.appendChild(sol);
+  }
+
+  function collecter(batiment, ev){
+    const gain = batiment.revenu * (state.energy/100);
+    state.coins += gain;
+    animerGain(ev, gain);
+    if (tg) tg.HapticFeedback && tg.HapticFeedback.impactOccurred('light');
+    maj();
+  }
+
+  function animerGain(ev, gain){
+    const wrap = document.getElementById('skylineWrap');
+    const rect = wrap.getBoundingClientRect();
+    const x = (ev.clientX || rect.width/2) - rect.left;
+    const y = (ev.clientY || rect.height/2) - rect.top;
+    const el = document.createElement('div');
+    el.className = 'float-coin';
+    el.textContent = '+' + gain.toFixed(1);
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    floaters.appendChild(el);
+    setTimeout(()=> el.remove(), 900);
+  }
+
+  // ---------------- LISTE DES BÂTIMENTS ----------------
+  function dessinerListe(){
+    buildingListEl.innerHTML = '';
+    state.buildings.forEach(b=>{
+      const carte = document.createElement('div');
+      carte.className = 'building-card';
+      const coutActuel = Math.round(b.cout * Math.pow(1.35, b.nb));
+      carte.innerHTML = `
+        <div class="b-left">
+          <div class="b-icon">${b.emoji}</div>
+          <div>
+            <div class="b-name">${b.nom} ${b.nb > 0 ? '· x'+b.nb : ''}</div>
+            <div class="b-desc">+${b.revenu} ZCoins / tap</div>
+          </div>
+        </div>
+        <button class="b-buy" ${state.coins < coutActuel ? 'disabled' : ''}>${coutActuel} 🪙</button>
+      `;
+      carte.querySelector('.b-buy').addEventListener('click', ()=> construire(b.id));
+      buildingListEl.appendChild(carte);
+    });
+  }
+
+  function construire(id){
+    const b = state.buildings.find(x=>x.id===id);
+    const cout = Math.round(b.cout * Math.pow(1.35, b.nb));
+    if(state.coins < cout) return;
+    state.coins -= cout;
+    b.nb += 1;
+    if (tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
+    maj();
+  }
+
+  // ---------------- BOUTONS D'ACTION ----------------
+  document.getElementById('btnCollectAll').addEventListener('click', (ev)=>{
+    const total = revenuTotal() * (state.energy/100);
+    if(total <= 0) return;
+    state.coins += total;
+    animerGain({clientX:null, clientY:null}, total);
+    if (tg) tg.HapticFeedback && tg.HapticFeedback.impactOccurred('medium');
+    maj();
+  });
+
+  document.getElementById('btnBuild').addEventListener('click', ()=>{
+    document.querySelector('.section-title').scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  // ---------------- BOUCLE DE JEU : régénération d'énergie ----------------
+  setInterval(()=>{
+    state.energy = Math.min(100, state.energy + 0.4);
+    maj();
+  }, 2000);
+
+  maj();
+})();
+</script>
+
+</body>
+  </html>
+  
