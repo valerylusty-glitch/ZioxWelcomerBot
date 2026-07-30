@@ -1,0 +1,16 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "python bot.py",
+    "rootDirectory": "/"
+  },
+  "variables": {
+    "BOT_TOKEN": "",
+    "OWNER_ID": "",
+    "DATABASE_NAME": "ziox.db",
+    "LOG_LEVEL": "INFO",
+    "LANGUAGE": "fr"
+  }
+}
