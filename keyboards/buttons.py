@@ -1,70 +1,43 @@
 """
 keyboards/buttons.py
-
 Contient tous les claviers InlineKeyboard du bot.
 """
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-# ======================================================
-# IMPORTS
-# ======================================================
-
-from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
-
-
-# ======================================================
-# BOUTON RÈGLES
-# ======================================================
-
-def rules_keyboard() -> InlineKeyboardMarkup:
+def start_menu_keyboard() -> InlineKeyboardMarkup:
     """
-    Bouton permettant d'afficher les règles.
+    Menu principal affiché lors du /start.
     """
-
     keyboard = [
         [
-            InlineKeyboardButton(
-                text="📜 Voir les règles",
-                callback_data="rules",
-            )
+            InlineKeyboardButton("🛠 Commandes", callback_data="help"),
+            InlineKeyboardButton("📜 Règles", callback_data="rules")
+        ],
+        [
+            InlineKeyboardButton("📢 Canal", url="https://t.me/ZioxDev"),
+            InlineKeyboardButton("👨‍💻 Support", url="https://t.me/valerylusty")
+        ],
+        [
+            InlineKeyboardButton("➕ Ajouter à un groupe", url="https://t.me/ZioxWelcomerBot?startgroup=true")
         ]
     ]
-
     return InlineKeyboardMarkup(keyboard)
 
-
-# ======================================================
-# MENU PRINCIPAL
-# ======================================================
-
-def main_menu() -> InlineKeyboardMarkup:
+def help_keyboard() -> InlineKeyboardMarkup:
     """
-    Menu principal.
+    Menu d'aide.
     """
-
     keyboard = [
-
         [
-            InlineKeyboardButton(
-                text="📜 Règles",
-                callback_data="rules",
-            ),
-
-            InlineKeyboardButton(
-                text="ℹ️ Aide",
-                callback_data="help",
-            ),
+            InlineKeyboardButton("🛡 Modération", callback_data="help_mod"),
+            InlineKeyboardButton("⚙️ Gestion", callback_data="help_admin")
         ],
-
         [
-            InlineKeyboardButton(
-                text="➕ Ajouter le bot",
-                url="https://t.me/ZioxWelcomerBot",
-            )
-        ],
-
+            InlineKeyboardButton("🔙 Retour", callback_data="start_back")
+        ]
     ]
+    return InlineKeyboardMarkup(keyboard)
 
+def rules_keyboard() -> InlineKeyboardMarkup:
+    keyboard = [[InlineKeyboardButton("📜 Voir les règles", callback_data="rules")]]
     return InlineKeyboardMarkup(keyboard)
