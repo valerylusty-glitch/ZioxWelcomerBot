@@ -1,94 +1,177 @@
-# 🏙️ Ziox Bot — Bot Telegram Welcomer + Mini-App
+# 🏙️ Ziox — Bot Telegram professionnel + Life City
 
-Une base complète, prête à personnaliser :
-- 👋 Message d'accueil (privé + nouveaux membres de groupe) avec du texte soigné et des émojis
-- 🎮 Menu de mini-jeux (dé, pierre-papier-ciseaux, deviner le nombre)
-- 🏙️ **Ziox** : une mini-application Telegram (ville virtuelle cliquable, avec ZCoins, énergie et bâtiments à construire)
-- 🔘 Boutons inline pour naviguer sans taper de commande
+Un bot Telegram complet avec modération, accueil/au revoir personnalisables,
+système familial, et une mini-application "Life City" (profil, banque virtuelle,
+coffres, bourse simulée).
+
+⚠️ **Important — lire avant de commencer :** toute l'économie du jeu (ZCoins, banque,
+bourse) est **entièrement virtuelle et fictive**. Ce projet ne traite aucun vrai
+paiement, aucune vraie carte bancaire, et ne connecte aucun marché financier réel —
+ce serait un système financier réglementé, hors de portée d'un simple bot. La
+"bourse en temps réel" est une simulation dont les prix évoluent tout seuls.
 
 ---
 
 ## 📁 Structure du projet
 
 ```
-ziox_bot/
-├── bot.py              # Le bot Telegram (Python)
-├── requirements.txt    # Dépendances Python
-├── .env.example         # Modèle de configuration
-└── webapp/
-    └── index.html       # La mini-app Ziox (à héberger en HTTPS)
+ziox_pro/
+├── bot/
+│   ├── main.py            # Point d'entrée du bot (commandes générales)
+│   ├── database.py        # Modèles de base de données (partagés avec l'API)
+│   ├── moderation.py      # kick / ban / unban / mute / unmute / warn / unwarn
+│   ├── welcome.py         # Accueil / au revoir personnalisables (texte + audio)
+│   ├── family.py          # Système de famille virtuelle
+│   └── requirements.txt
+├── api/
+│   ├── server.py           # API Flask pour la mini-app (profil, banque, coffres, bourse)
+│   └── requirements.txt
+├── webapp/
+│   └── index.html          # Mini-application Ziox (front-end)
+└── env.example.txt         # Modèle de configuration
 ```
 
----
-
-## 1️⃣ Créer le bot sur Telegram
-
-1. Ouvre une conversation avec [@BotFather](https://t.me/BotFather)
-2. Envoie `/newbot` et suis les instructions
-3. Récupère le **token** fourni (format `123456789:AAxxxxxxx...`)
+Le bot et l'API **partagent la même base de données** (fichier `ziox.db` par défaut),
+donc les infos vues dans le chat (`/profil`, `/solde`) et dans la mini-app sont
+toujours synchronisées.
 
 ---
 
-## 2️⃣ Installer le projet
+## 1️⃣ Créer le bot
+
+1. Ouvre [@BotFather](https://t.me/BotFather) sur Telegram
+2. `/newbot` → suis les instructions → récupère le **token**
+3. Active les mini-apps : `/mybots` → ton bot → `Bot Settings` → `Menu Button` →
+   configure l'URL de ta webapp (voir étape 4)
+
+---
+
+## 2️⃣ Configuration
+
+À la racine du projet (`ziox_pro/`) :
 
 ```bash
-pip install -r requirements.txt
-cp .env.example .env
+cp env.example.txt .env
 ```
 
-Ouvre `.env` et remplis :
-
+Remplis `.env` :
 ```
 BOT_TOKEN=le_token_donné_par_BotFather
 WEBAPP_URL=https://ton-domaine.exemple/webapp/index.html
+DATABASE_URL=sqlite:///ziox.db
+PORT=5000
 ```
 
-> ⚠️ Telegram **exige une URL HTTPS publique** pour les mini-apps (WebApp). `localhost` ne fonctionne pas depuis l'app Telegram.
-
 ---
 
-## 3️⃣ Héberger la mini-app Ziox
-
-Le fichier `webapp/index.html` est autonome (HTML/CSS/JS, aucune dépendance externe à installer). Héberge-le sur un service gratuit, par exemple :
-
-- **GitHub Pages** (glisser le dossier `webapp/` dans un repo, activer Pages)
-- **Vercel** ou **Netlify** (drag & drop du dossier)
-- Ton propre serveur avec certificat SSL
-
-Une fois en ligne, copie l'URL exacte du fichier `index.html` dans `WEBAPP_URL`.
-
-💡 Optionnel : configure aussi un **bouton de menu** dans BotFather (`/setmenubutton`) pointant vers la même URL, pour que Ziox soit accessible directement depuis l'icône ☰ du chat.
-
----
-
-## 4️⃣ Lancer le bot
+## 3️⃣ Installer et lancer le bot
 
 ```bash
-python bot.py
+cd bot
+pip install -r requirements.txt
+python main.py
 ```
 
-Le bot tourne en polling — laisse le terminal ouvert (ou déploie-le sur un serveur / Railway / Render pour qu'il tourne en continu).
+---
+
+## 4️⃣ Installer et lancer l'API de la mini-app
+
+```bash
+cd api
+pip install -r requirements.txt
+python server.py
+```
+
+L'API doit être accessible en **HTTPS public** pour que la mini-app puisse la
+contacter depuis Telegram (utilise par exemple Render, Railway, Fly.io, ou un
+VPS avec un reverse proxy + certificat SSL — `ngrok` fonctionne aussi pour tester).
 
 ---
 
-## 🎮 Commandes disponibles
+## 5️⃣ Héberger et connecter la mini-app
 
-| Commande   | Effet                                    |
-|------------|-------------------------------------------|
-| `/start`   | Menu principal avec boutons               |
-| `/jeux`    | Menu des mini-jeux                        |
-| `/ziox`    | Lien direct vers la mini-app Ziox         |
-| `/profil`  | Affiche les infos du profil Telegram      |
-| `/help`    | Aide                                      |
+1. Héberge `webapp/index.html` en HTTPS (GitHub Pages, Vercel, Netlify…)
+2. Dans `webapp/index.html`, remplace la ligne :
+   ```js
+   const API_BASE = window.ZIOX_API_BASE || "https://ton-api.exemple.com";
+   ```
+   par l'URL réelle de ton API (étape 4).
+3. Renseigne cette même URL dans `.env` → `WEBAPP_URL`, et dans le bouton de menu
+   BotFather (étape 1).
 
 ---
 
-## 🧩 Pour aller plus loin
+## 🎮 Commandes du bot
 
-- **Sauvegarde des données Ziox** : actuellement le score repart de zéro à chaque ouverture (état en mémoire côté navigateur). Pour une vraie persistance, branche l'API `Telegram.WebApp.CloudStorage` (native, pas besoin de backend) ou connecte la webapp à ta propre base de données via une petite API.
-- **Ajouter des jeux** : duplique le schéma des fonctions `jeu_*` dans `bot.py`.
-- **Habiller le message d'accueil de groupe** avec une image : utilise `reply_photo()` au lieu de `reply_text()`.
-- **Statistiques multi-joueurs** : stocke `state` par utilisateur (ex. base SQLite) plutôt qu'en mémoire JS si tu veux un vrai classement entre joueurs.
+### Général
+| Commande | Effet |
+|---|---|
+| `/start` | Menu principal |
+| `/profil` | Voir son profil Ziox |
+| `/solde` | Voir son solde bancaire |
+
+### Famille
+| Commande | Effet |
+|---|---|
+| `/famille creer <nom>` | Fonder une famille |
+| `/famille inviter` | Inviter (en réponse à un message) |
+| `/famille accepter` | Accepter une invitation |
+| `/famille quitter` | Quitter sa famille |
+
+### Accueil / au revoir (admins)
+| Commande | Effet |
+|---|---|
+| `/accueil on \| off` | Activer / désactiver |
+| `/accueil texte <message>` | Personnaliser (variables `{prenom}` `{groupe}`) |
+| `/accueil audio` | Répondre à un vocal pour le définir |
+| `/accueil test` | Prévisualiser |
+| `/aurevoir …` | Mêmes options pour le message de départ |
+
+### Jeux (avec de vraies ZCoins)
+| Commande | Effet |
+|---|---|
+| `/machine <mise>` | 🎰 Machine à sous solo — mise minimale 5 ZCoins, jackpot x25 sur triple 7️⃣ |
+| `/duel <mise>` | ⚔️ Duel Pierre-Papier-Ciseaux avec mise, à faire en réponse au message de l'adversaire. Il accepte via bouton, les deux choisissent en secret, le gagnant remporte la mise du perdant. |
+
+### Modération (admins)
+| Commande | Effet |
+|---|---|
+| `/kick` | Expulser (répondre au message) |
+| `/ban` / `/unban <id>` | Bannir / débannir |
+| `/mute [minutes]` / `/unmute` | Museler / démuseler |
+| `/warn <raison>` / `/unwarn` / `/warns` | Avertir (ban auto au 3ᵉ) |
+
+---
+
+## 🎁 Fonctionnement du jeu (mini-app)
+
+- **Profil** : nom, nationalité, âge, sexe, diplôme, statut relationnel — à
+  remplir une fois à la première ouverture.
+- **Banque** : compte avec numéro unique, solde en ZCoins, virements entre
+  joueurs (par ID Telegram), historique des transactions.
+- **Coffres** : un coffre gratuit toutes les 5 minutes, avec table de butin
+  pondérée (argent, voitures de marques fictives associées à un nom réel de
+  constructeur pour l'ambiance, objets rares) — raretés commun → légendaire.
+- **Bourse simulée** : 5 actifs fictifs dont le prix évolue selon une marche
+  aléatoire pondérée par le temps écoulé ; achat/vente en ZCoins, suivi des
+  gains/pertes en %.
+- **Famille** : fondée et gérée depuis le chat (`/famille`), consultable dans
+  la mini-app (solde commun, liste des membres).
+
+---
+
+## 🧩 Pistes pour la suite
+
+- **Comptes joints familiaux** : ajouter un endpoint `/api/famille/deposer`
+  pour alimenter le `solde_commun` depuis le solde personnel.
+- **Anti-spam / anti-flood** : ajouter un `MessageHandler` qui compte les
+  messages par utilisateur/minute et mute automatiquement en cas d'excès.
+- **Notifications de marché** : tâche planifiée (`JobQueue` de
+  python-telegram-bot) qui alerte les joueurs en cas de forte variation de prix.
+- **Classement** : endpoint `/api/classement` trié par solde total (banque +
+  inventaire) pour un leaderboard dans la mini-app.
+- **Production** : remplacer SQLite par PostgreSQL (juste changer
+  `DATABASE_URL`), et déployer bot + API sur un service persistant (Railway,
+  Render, VPS) plutôt qu'en local.
 
 Bon développement ! 🚀
-
