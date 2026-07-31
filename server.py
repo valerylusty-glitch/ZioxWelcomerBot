@@ -17,10 +17,10 @@ import hashlib
 import random
 from urllib.parse import parse_qsl
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "bot"))
+sys.path.insert(0, os.path.dirname(__file__))
 from database import (  # noqa: E402
     SessionLocal, init_db, User, CompteBancaire, Transaction, Famille,
     InvitationFamille, Coffre, ObjetInventaire, ActifBoursier, Position,
@@ -464,6 +464,21 @@ def bourse_positions():
         session.close()
 
 
+@app.route("/health")
+def healthcheck():
+    """Endpoint de santé pour Railway / autres services."""
+    return jsonify({"status": "ok"}), 200
+
+@app.route("/")
+def index():
+    """Sert la mini-app index.html."""
+    html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    response = make_response(content)
+    response.headers["Content-Type"] = "text/html; charset=utf-8"
+    return response
+
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    port = int(os.getenv("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)

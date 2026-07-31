@@ -2,9 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Installer les dépendances
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Installer les dépendances du bot + API
+RUN pip install --no-cache-dir \
+    python-telegram-bot==21.6 \
+    python-dotenv==1.0.1 \
+    SQLAlchemy==2.0.35 \
+    Flask==3.0.3 \
+    flask-cors==4.0.1
 
 # Copier les fichiers du projet
 COPY main.py .
@@ -16,12 +20,9 @@ COPY server.py .
 COPY index.html .
 COPY games.py .
 
-# Variables d'environnement par défaut
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
 
-# Exposer le port pour l'API
+# Le port est injecté par Railway via la variable PORT (par défaut 8080)
 EXPOSE 8080
 
-# Lancer l'API Flask (bot et API dans le même conteneur)
 CMD ["python", "server.py"]
