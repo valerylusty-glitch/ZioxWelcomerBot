@@ -32,8 +32,7 @@ DELAI_COFFRE_SECONDES = 5 * 60  # 5 minutes
 
 app = Flask(__name__)
 CORS(app)
-
-init_db()
+# init_db() est appelé par start.py avant le lancement des threads
 
 
 # ----------------------------------------------------------------------

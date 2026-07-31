@@ -218,7 +218,13 @@ ACTIFS_PAR_DEFAUT = [
 ]
 
 
+_db_initialized = False
+
 def init_db():
+    global _db_initialized
+    if _db_initialized:
+        return
+    _db_initialized = True
     Base.metadata.create_all(engine)
     session = SessionLocal()
     try:

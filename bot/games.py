@@ -11,7 +11,7 @@ from telegram import (
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from database import SessionLocal, get_or_create_user, CompteBancaire, Duel
+from database import SessionLocal, get_or_create_user, User, CompteBancaire, Duel
 
 # ----------------------------------------------------------------------
 # MACHINE À SOUS
@@ -249,32 +249,24 @@ def _resoudre_duel(session, duel: Duel):
 
 def _envoyer_resultat_duel(context, duel: Duel, chat_id: int):
     """Envoie le résultat du duel dans le chat."""
-    noms = {duel.challenger_id: "Joueur 1", duel.adversaire_id: "Joueur 2"}
+    session = SessionLocal()
+    try:
+        gagnant_user = session.get(User, duel.gagnant_id) if duel.gagnant_id else None
+        gagnant_nom = gagnant_user.first_name if gagnant_user else "Inconnu"
+    finally:
+        session.close()
 
     resultat = (
         f"⚔️ <b>Résultat du duel !</b>\n\n"
-        f"🪨 vs 📄 vs ✂️\n\n"
-        f"Joueur 1 ({noms[duel.challenger_id]}) : <b>{duel.choix_challenger}</b>\n"
-        f"Joueur 2 ({noms[duel.adversaire_id]}) : <b>{duel.choix_adversaire}</b>\n\n"
+        f"Joueur 1 : <b>{duel.choix_challenger}</b>\n"
+        f"Joueur 2 : <b>{duel.choix_adversaire}</b>\n\n"
     )
 
     if duel.gagnant_id:
-        session = SessionLocal()
-        try:
-            gagnant_tg = session.get(CompteBancaire, duel.gagnant_id)
-            gagnant_compte = session.get(CompteBancaire, duel.gagnant_id)
-            gagnant_user = session.query(
-                __import__("database", fromlist=["User"]).User
-            ).get(duel.gagnant_id)
-            gagnant_nom = gagnant_user.first_name if gagnant_user else "Inconnu"
-        finally:
-            session.close()
-
         resultat += (
             f"🏆 <b>{gagnant_nom}</b> remporte <b>{duel.mise:.0f} ZCoins</b> !"
         )
     else:
         resultat += "🤝 Égalité ! La mise est restituée."
 
-    from telegram.ext import ContextTypes
     context.bot.send_message(chat_id=chat_id, text=resultat, parse_mode=ParseMode.HTML)
