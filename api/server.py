@@ -20,7 +20,7 @@ from urllib.parse import parse_qsl
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bot"))
 from database import (  # noqa: E402
     SessionLocal, init_db, User, CompteBancaire, Transaction, Famille,
     InvitationFamille, Coffre, ObjetInventaire, ActifBoursier, Position,
@@ -471,8 +471,8 @@ def healthcheck():
 
 @app.route("/")
 def index():
-    """Sert la mini-app index.html."""
-    html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    """Sert la mini-app webapp/index.html."""
+    html_path = os.path.join(os.path.dirname(__file__), "..", "webapp", "index.html")
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()
     response = make_response(content)
