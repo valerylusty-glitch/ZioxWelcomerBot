@@ -62,13 +62,14 @@ async def cmd_help(update: Update, context):
         "<b>👮 Modération (admins)</b>\n"
         "/kick /ban /unban /mute /unmute /warn /unwarn /warns\n"
         "(répondre au message de la personne concernée)\n\n"
-        "<b>👥 Gestion Groupe (admins)</b>\n"
-        "/tagall &lt;message&gt; — Mentionner tous les actifs\n"
-        "/leaderboard — Classement des chatteurs\n"
-        "/leaderboard_groups — Classement des groupes\n"
-        "/stats — Statistiques du groupe\n"
-        "/mystats — Tes statistiques personnelles\n"
-        "/reset_stats confirm — Réinitialiser les stats"
+        "<b>👥 Gestion Groupe (admins & tout le monde)</b>\n"
+        "/tagall &lt;message&gt; — 📢 Mentionner tous les actifs\n"
+        "/leaderboard — 🏆 Classement des chatteurs\n"
+        "/leaderboard_groups — 🏆 Classement des groupes\n"
+        "/top_this_week — 📈 Top de la semaine\n"
+        "/stats — 📊 Statistiques du groupe\n"
+        "/mystats — 📋 Tes statistiques personnelles\n"
+        "/reset_stats confirm — 🔄 Réinitialiser les stats (admin)"
     )
     await update.message.reply_text(help_text, parse_mode=ParseMode.HTML)
 
@@ -143,12 +144,14 @@ def main():
     app.add_handler(CommandHandler("warns", moderation.cmd_warns))
 
     # Gestion Groupe
+    app.add_handler(CommandHandler("kickall", groups.cmd_kickall))
     app.add_handler(CommandHandler("tagall", groups.cmd_tagall))
     app.add_handler(CommandHandler("leaderboard", groups.cmd_leaderboard_users))
     app.add_handler(CommandHandler("leaderboard_groups", groups.cmd_leaderboard_groups))
     app.add_handler(CommandHandler("stats", groups.cmd_stats_groupe))
     app.add_handler(CommandHandler("mystats", groups.cmd_mon_stats))
     app.add_handler(CommandHandler("reset_stats", groups.cmd_reset_stats))
+    app.add_handler(CommandHandler("top_this_week", groups.cmd_top_this_week))
     
     # Tracker les messages pour les statistiques
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, groups.track_message))
