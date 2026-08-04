@@ -1,6 +1,6 @@
 """
 Point d'entrée du bot Ziox.
-Assemble : accueil/au revoir, modération, famille, et le lien vers la mini-app.
+Assemble : accueil/au revoir, modération, famille, groupes, et le lien vers la mini-app.
 """
 
 import os
@@ -18,6 +18,7 @@ import moderation
 import welcome
 import family
 import games
+import groups
 
 load_dotenv()
 
@@ -44,25 +45,32 @@ async def cmd_start(update: Update, context):
 
 
 async def cmd_help(update: Update, context):
-    await update.message.reply_text(
+    help_text = (
         "🛠️ <b>Commandes disponibles</b>\n\n"
-        "<b>Général</b>\n"
+        "<b>🏠 Général</b>\n"
         "/start — Menu principal\n"
         "/profil — Voir mon profil Ziox\n"
         "/solde — Voir mon solde bancaire\n\n"
-        "<b>Famille</b>\n"
+        "<b>👨‍👩‍👧 Famille</b>\n"
         "/famille — Créer, inviter, accepter, quitter\n\n"
-        "<b>Jeux (avec de vraies ZCoins)</b>\n"
+        "<b>🎮 Jeux (avec de vraies ZCoins)</b>\n"
         "/machine &lt;mise&gt; — 🎰 Machine à sous (solo)\n"
         "/duel &lt;mise&gt; — ⚔️ Défier un joueur (répondre à son message)\n\n"
-        "<b>Configuration (admins)</b>\n"
+        "<b>⚙️ Configuration Accueil (admins)</b>\n"
         "/accueil — Configurer le message de bienvenue\n"
         "/aurevoir — Configurer le message de départ\n\n"
-        "<b>Modération (admins)</b>\n"
+        "<b>👮 Modération (admins)</b>\n"
         "/kick /ban /unban /mute /unmute /warn /unwarn /warns\n"
-        "(répondre au message de la personne concernée)",
-        parse_mode=ParseMode.HTML,
+        "(répondre au message de la personne concernée)\n\n"
+        "<b>👥 Gestion Groupe (admins)</b>\n"
+        "/tagall &lt;message&gt; — Mentionner tous les actifs\n"
+        "/leaderboard — Classement des chatteurs\n"
+        "/leaderboard_groups — Classement des groupes\n"
+        "/stats — Statistiques du groupe\n"
+        "/mystats — Tes statistiques personnelles\n"
+        "/reset_stats confirm — Réinitialiser les stats"
     )
+    await update.message.reply_text(help_text, parse_mode=ParseMode.HTML)
 
 
 async def cmd_profil(update: Update, context):
@@ -133,6 +141,17 @@ def main():
     app.add_handler(CommandHandler("warn", moderation.cmd_warn))
     app.add_handler(CommandHandler("unwarn", moderation.cmd_unwarn))
     app.add_handler(CommandHandler("warns", moderation.cmd_warns))
+
+    # Gestion Groupe
+    app.add_handler(CommandHandler("tagall", groups.cmd_tagall))
+    app.add_handler(CommandHandler("leaderboard", groups.cmd_leaderboard_users))
+    app.add_handler(CommandHandler("leaderboard_groups", groups.cmd_leaderboard_groups))
+    app.add_handler(CommandHandler("stats", groups.cmd_stats_groupe))
+    app.add_handler(CommandHandler("mystats", groups.cmd_mon_stats))
+    app.add_handler(CommandHandler("reset_stats", groups.cmd_reset_stats))
+    
+    # Tracker les messages pour les statistiques
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, groups.track_message))
 
     print("Ziox Bot démarré 🚀")
     app.run_polling()
