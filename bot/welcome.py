@@ -1,7 +1,7 @@
 """
 Système d'accueil et d'au revoir personnalisable par groupe :
 - Texte personnalisé (avec variables : {prenom}, {username}, {bio}, {groupe}, {user_id}, etc.)
-- Affichage du profil utilisateur avec box esthétique
+- Affichage du profil utilisateur complet avec photo de profil
 - Message vocal/audio personnalisé
 - Activation / désactivation indépendante
 - Support complet du Markdown Telegram
@@ -11,7 +11,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from database import SessionLocal, ParametresGroupe, get_or_create_user
+from database import SessionLocal, ParametresGroupe, get_or_create_user, User
 from moderation import est_admin
 
 
@@ -24,22 +24,56 @@ def get_parametres(session, chat_id: int) -> ParametresGroupe:
     return params
 
 
-def get_user_profile_text(member, groupe_name: str) -> str:
-    """Génère un texte de profil esthétique pour un utilisateur."""
+def get_user_profile_text(session, member, user_id: int) -> str:
+    """Génère un texte de profil esthétique avec toutes les infos de la base de données."""
+    
+    # Récupérer les infos du user depuis la base de données
+    user = session.get(User, user_id)
+    
     username = member.username or "N/A"
-    user_id = member.id
     first_name = member.first_name or "Utilisateur"
     last_name = member.last_name or ""
+    
+    # Infos du profil (si l'utilisateur existe en base)
+    if user:
+        nationalite = user.nationalite or "Non renseignée"
+        age = user.age or "Non renseigné"
+        sexe = user.sexe or "Non renseigné"
+        diplome = user.diplome or "Non renseigné"
+        statut = user.statut_relationnel or "Non renseigné"
+    else:
+        nationalite = "Non renseignée"
+        age = "Non renseigné"
+        sexe = "Non renseigné"
+        diplome = "Non renseigné"
+        statut = "Non renseigné"
     
     profile_text = (
         "┌─────────────────────────────┐\n"
         f"│ 👤 *{first_name} {last_name}*\n"
         f"│ └ @{username}\n"
         f"│ ID: `{user_id}`\n"
+        f"│\n"
+        f"│ 🌍 Nationalité: *{nationalite}*\n"
+        f"│ 🎂 Âge: *{age}*\n"
+        f"│ ⚧ Sexe: *{sexe}*\n"
+        f"│ 🎓 Diplôme: *{diplome}*\n"
+        f"│ 💞 Statut: *{statut}*\n"
         "└─────────────────────────────┘"
     )
     
     return profile_text
+
+
+async def get_user_photo(context, user_id: int):
+    """Récupère la photo de profil de l'utilisateur."""
+    try:
+        photos = await context.bot.get_user_profile_photos(user_id=user_id, limit=1)
+        if photos.photos:
+            return photos.photos[0][0].file_id
+    except Exception as e:
+        print(f"Erreur lors de la récupération de la photo: {e}")
+    return None
 
 
 def format_welcome_message(member, group_name: str, custom_template: str = None) -> str:
@@ -54,10 +88,7 @@ def format_welcome_message(member, group_name: str, custom_template: str = None)
             "Nous sommes heureux de t'accueillir !"
         )
     
-    profile_section = get_user_profile_text(member, group_name)
-    
     message = custom_template.format(
-        user_profile=profile_section,
         prenom=member.first_name or "ami",
         username=member.username or "utilisateur",
         groupe=group_name,
@@ -79,10 +110,7 @@ def format_goodbye_message(member, group_name: str, custom_template: str = None)
             "À bientôt ! 😢"
         )
     
-    profile_section = get_user_profile_text(member, group_name)
-    
     message = custom_template.format(
-        user_profile=profile_section,
         prenom=member.first_name or "ami",
         username=member.username or "utilisateur",
         groupe=group_name,
@@ -110,7 +138,8 @@ async def cmd_accueil(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "`{prenom}` — Prénom\n"
             "`{username}` — Username\n"
             "`{groupe}` — Nom du groupe\n"
-            "`{user_id}` — ID utilisateur\n\n"
+            "`{user_id}` — ID utilisateur\n"
+            "`{user_profile}` — Profil complet avec infos\n\n"
             "`/accueil audio` — répondre à un vocal\n"
             "`/accueil test` — prévisualiser le message"
         )
@@ -171,12 +200,26 @@ async def cmd_accueil(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         elif sous_commande == "test":
+            user_profile = get_user_profile_text(session, update.effective_user, update.effective_user.id)
             texte = format_welcome_message(
                 update.effective_user,
                 update.effective_chat.title or "ce groupe",
                 params.accueil_texte
             )
-            await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
+            texte = texte.replace("{user_profile}", user_profile)
+            
+            # Essayer d'envoyer avec photo de profil
+            photo_id = await get_user_photo(context, update.effective_user.id)
+            
+            if photo_id:
+                await update.message.reply_photo(
+                    photo=photo_id,
+                    caption=texte,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            else:
+                await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
+            
             if params.accueil_audio_file_id:
                 await update.message.reply_voice(params.accueil_audio_file_id)
 
@@ -203,7 +246,8 @@ async def cmd_aurevoir(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "`{prenom}` — Prénom\n"
             "`{username}` — Username\n"
             "`{groupe}` — Nom du groupe\n"
-            "`{user_id}` — ID utilisateur\n\n"
+            "`{user_id}` — ID utilisateur\n"
+            "`{user_profile}` — Profil complet avec infos\n\n"
             "`/aurevoir audio` — répondre à un vocal\n"
             "`/aurevoir test` — prévisualiser le message"
         )
@@ -264,12 +308,26 @@ async def cmd_aurevoir(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         elif sous_commande == "test":
+            user_profile = get_user_profile_text(session, update.effective_user, update.effective_user.id)
             texte = format_goodbye_message(
                 update.effective_user,
                 update.effective_chat.title or "ce groupe",
                 params.aurevoir_texte
             )
-            await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
+            texte = texte.replace("{user_profile}", user_profile)
+            
+            # Essayer d'envoyer avec photo de profil
+            photo_id = await get_user_photo(context, update.effective_user.id)
+            
+            if photo_id:
+                await update.message.reply_photo(
+                    photo=photo_id,
+                    caption=texte,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            else:
+                await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
+            
             if params.aurevoir_audio_file_id:
                 await update.message.reply_voice(params.aurevoir_audio_file_id)
 
@@ -299,8 +357,24 @@ async def sur_nouveau_membre(update: Update, context: ContextTypes.DEFAULT_TYPE)
             if membre.is_bot:
                 continue
             
+            # Créer/récupérer l'utilisateur en base de données
+            get_or_create_user(session, membre)
+            
+            user_profile = get_user_profile_text(session, membre, membre.id)
             texte = format_welcome_message(membre, group_name, params.accueil_texte)
-            await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
+            texte = texte.replace("{user_profile}", user_profile)
+            
+            # Essayer d'envoyer avec photo de profil
+            photo_id = await get_user_photo(context, membre.id)
+            
+            if photo_id:
+                await update.message.reply_photo(
+                    photo=photo_id,
+                    caption=texte,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            else:
+                await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
             
             if params.accueil_audio_file_id:
                 await update.message.reply_voice(params.accueil_audio_file_id)
@@ -320,9 +394,21 @@ async def sur_depart_membre(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         group_name = update.effective_chat.title or "ce groupe"
+        user_profile = get_user_profile_text(session, membre, membre.id)
         texte = format_goodbye_message(membre, group_name, params.aurevoir_texte)
+        texte = texte.replace("{user_profile}", user_profile)
         
-        await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
+        # Essayer d'envoyer avec photo de profil
+        photo_id = await get_user_photo(context, membre.id)
+        
+        if photo_id:
+            await update.message.reply_photo(
+                photo=photo_id,
+                caption=texte,
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await update.message.reply_text(texte, parse_mode=ParseMode.MARKDOWN)
         
         if params.aurevoir_audio_file_id:
             await update.message.reply_voice(params.aurevoir_audio_file_id)
