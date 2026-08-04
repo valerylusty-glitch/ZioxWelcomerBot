@@ -1,8 +1,5 @@
 """
-Base de données partagée entre le bot Telegram et l'API de la mini-app.
-SQLite + SQLAlchemy : simple à déployer, largement suffisant pour démarrer.
-Pour un vrai passage en production multi-serveurs, remplacer SQLite par PostgreSQL
-(il suffit de changer DATABASE_URL, le code ORM ne change pas).
+Base de données améliorée avec support pour les statistiques de groupe et classements.
 """
 
 import os
@@ -50,6 +47,31 @@ class User(Base):
     profil_complet = Column(Boolean, default=False)
 
     famille = relationship("Famille", back_populates="membres")
+
+
+# ----------------------------------------------------------------------
+# STATISTIQUES DE GROUPE & CLASSEMENT
+# ----------------------------------------------------------------------
+
+class GroupeStats(Base):
+    __tablename__ = "groupe_stats"
+
+    chat_id = Column(BigInteger, primary_key=True)
+    nom_groupe = Column(String(255), nullable=True)
+    total_messages = Column(Integer, default=0)
+    total_membres = Column(Integer, default=0)
+    date_creation = Column(DateTime, default=datetime.utcnow)
+    derniere_maj = Column(DateTime, default=datetime.utcnow)
+
+
+class MessageStats(Base):
+    __tablename__ = "message_stats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_id = Column(BigInteger, nullable=False)
+    user_id = Column(BigInteger, nullable=False)
+    nombre_messages = Column(Integer, default=1)
+    date_derniers_messages = Column(DateTime, default=datetime.utcnow)
 
 
 # ----------------------------------------------------------------------
